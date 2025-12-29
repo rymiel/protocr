@@ -9,6 +9,30 @@ module Protocr
     Invalid = 255
   end
 
+  struct StaticBitset(Bytes)
+    @data : UInt8[Bytes]
+
+    def initialize
+      @data = StaticArray(UInt8, Bytes).new 0u8
+    end
+
+    def test(idx : Int32) : Bool
+      byte_idx = idx // 8
+      bit_idx = idx % 8
+      return ((@data[byte_idx] >> bit_idx) & 1) != 0
+    end
+
+    def set(idx : Int32, value : Bool)
+      byte_idx = idx // 8
+      bit_idx = idx % 8
+      if (value)
+        @data[byte_idx] |= (1u8 << bit_idx)
+      else
+        @data[byte_idx] &= ~(1u8 << bit_idx)
+      end
+    end
+  end
+
   class Reader
     @io : IO
 

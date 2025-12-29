@@ -13,6 +13,8 @@ sealed interface ProtoType permits MessageProtoType, SimpleProtoType {
 
   String writerMethod();
 
+  boolean compactable();
+
   static ProtoType of(DescriptorProtos.FieldDescriptorProto field) {
     return switch (field.getType()) {
       case TYPE_DOUBLE -> throw new UnsupportedOperationException(field.getType().toString());

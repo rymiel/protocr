@@ -27,4 +27,9 @@ public record MessageProtoType(DescriptorProtos.FieldDescriptorProto field) impl
   public String writerMethod() {
     return "write_message";
   }
+
+  @Override
+  public boolean compactable() {
+    return false;
+  }
 }
