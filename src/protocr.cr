@@ -116,7 +116,7 @@ module Protocr
     def len_subreader(t : T.class) : T? forall T
       slice = read_bytes
       return nil if slice.nil?
-      t.new Reader.new IO::Memory.new(slice)
+      t.new Reader.new slice
     end
 
     def skip(wire_type : WireType) : Nil
