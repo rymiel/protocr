@@ -28,6 +28,8 @@ describe Protocr do
     thing.has_other?.should be_true
     # TODO: equality operator
     # thing.other.should eq Other.new(foo: "bar")
+    thing.other.has_foo?.should be_true
+    thing.other.foo.should eq "bar"
   end
 
   it "decodes basic partial" do
@@ -42,7 +44,9 @@ describe Protocr do
     thing.uint32.should eq 0u32
     thing.has_other?.should be_true
     # TODO: equality operator
-    # thing.other.should eq Other.new(foo: "")
+    # thing.other.should eq Other.new()
+    thing.other.has_foo?.should be_false
+    thing.other.foo.should be_empty
   end
 
   it "decodes incremental original" do
