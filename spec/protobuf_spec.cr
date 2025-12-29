@@ -39,6 +39,32 @@ describe Protocr do
     thing.uint32.should eq 0u32
   end
 
+  it "decodes incremental original" do
+    thing = Incremental.from_protobuf data("Incremental.1")
+    thing.has_a?.should be_true
+    thing.a.should eq 123u32
+    thing.has_b?.should be_true
+    thing.b.should eq 456u32
+  end
+
+  it "decodes incremental modified" do
+    thing = Incremental.from_protobuf data("IncrementalV2.1")
+    thing.has_a?.should be_false
+    thing.a.should eq 0u32
+    thing.has_b?.should be_true
+    thing.b.should eq 789u32
+    # "key" field has been skipped
+  end
+
+  it "decodes incremental old" do
+    thing = IncrementalV2.from_protobuf data("Incremental.1")
+    thing.has_key?.should be_false
+    thing.key.should be_empty
+    thing.has_b?.should be_true
+    thing.b.should eq 456u32
+    # "a" field has been skipped
+  end
+
   it "encodes simple" do
     thing = Simple.new
     thing.text = "Hello, world!"

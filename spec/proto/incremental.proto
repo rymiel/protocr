@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package protocr.spec;
+
+message Incremental {
+  optional uint32 a = 1;
+  optional uint32 b = 3;
+}
+
+// A field has been added (2) and a field has been removed (1)
+message IncrementalV2 {
+  reserved 1;
+  optional string key = 2;
+  optional uint32 b = 3;
+}
