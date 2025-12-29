@@ -3,5 +3,5 @@ syntax = "proto3";
 package protocr.spec;
 
 message Simple {
-  string text = 1;
+  optional string text = 1;
 }

@@ -1,0 +1,4 @@
+string: "String"
+bytes: "\x00\x10\x20\x30\x40"
+uint64: 42949672950
+uint32: 4294967295

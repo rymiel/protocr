@@ -29,7 +29,7 @@ sealed interface ProtoType permits MessageProtoType, SimpleProtoType {
       case TYPE_GROUP -> throw new UnsupportedOperationException(field.getType().toString());
       case TYPE_MESSAGE -> new MessageProtoType(field);
       case TYPE_BYTES -> SimpleProtoType.BYTES;
-      case TYPE_UINT32 -> throw new UnsupportedOperationException(field.getType().toString());
+      case TYPE_UINT32 -> SimpleProtoType.UINT_32;
       case TYPE_ENUM -> throw new UnsupportedOperationException(field.getType().toString());
       case TYPE_SFIXED32 -> throw new UnsupportedOperationException(field.getType().toString());
       case TYPE_SFIXED64 -> throw new UnsupportedOperationException(field.getType().toString());
