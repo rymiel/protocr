@@ -12,7 +12,9 @@ public class FileGenerator extends Generator {
 
   public void run() {
     append("# Generated from %s by protocr\n".formatted(file.getName()));
+    append("{% unless flag?(:protocr_included) %}\n");
     append("require \"protocr\"\n");
+    append("{% end %}\n");
 
     for (String dep : file.getDependencyList()) {
       append("require \"./%s\"\n".formatted(StringUtil.crystalFilename(dep)));

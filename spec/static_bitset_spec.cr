@@ -1,5 +1,4 @@
-require "spec"
-require "../src/protocr"
+require "./spec_helper"
 
 describe Protocr::StaticBitset do
   it "works" do
@@ -9,7 +8,6 @@ describe Protocr::StaticBitset do
     0.upto 15 do |i|
       bs.test(i).should eq false
     end
-    # std::cout << "All bits initialized to zero: PASS\n";
 
     # Set some bits
     bs.set(0, true)
