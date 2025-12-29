@@ -87,10 +87,10 @@ public final class MessageGenerator extends Generator {
 
     append("""
         def self.from_protobuf(io : ::IO)
-          self.new(::Protocr::Reader.new io)
+          self.new(::Protocr::Reader.new io.getb_to_end)
         end
         def self.from_protobuf(bytes : ::Bytes)
-          self.new(::Protocr::Reader.new ::IO::Memory.new bytes)
+          self.new(::Protocr::Reader.new bytes)
         end
         """);
   }

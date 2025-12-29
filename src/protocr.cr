@@ -34,9 +34,10 @@ module Protocr
   end
 
   class Reader
-    @io : IO
+    @io : IO::Memory
 
-    def initialize(@io)
+    def initialize(bytes : Bytes)
+      @io = IO::Memory.new bytes
     end
 
     def read_varint_u64 : UInt64?
@@ -138,7 +139,7 @@ module Protocr
     end
 
     def write_string(str : String) : Nil
-      write_bytes(str.encode("UTF-8"))
+      write_bytes(str.to_slice)
     end
 
     def write_bytes(bytes : Bytes) : Nil
