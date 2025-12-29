@@ -7,4 +7,9 @@ message Basic {
   optional bytes bytes = 101;
   optional uint64 uint64 = 102;
   optional uint32 uint32 = 103;
+  optional Other other = 104;
+}
+
+message Other {
+  optional string foo = 1;
 }

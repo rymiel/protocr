@@ -25,6 +25,9 @@ describe Protocr do
     thing.uint64.should eq 42949672950u64
     thing.has_uint32?.should be_true
     thing.uint32.should eq 4294967295u32
+    thing.has_other?.should be_true
+    # TODO: equality operator
+    # thing.other.should eq Other.new(foo: "bar")
   end
 
   it "decodes basic partial" do
@@ -37,6 +40,9 @@ describe Protocr do
     thing.uint64.should eq 0u64
     thing.has_uint32?.should be_false
     thing.uint32.should eq 0u32
+    thing.has_other?.should be_true
+    # TODO: equality operator
+    # thing.other.should eq Other.new(foo: "")
   end
 
   it "decodes incremental original" do
@@ -82,6 +88,7 @@ describe Protocr do
     thing.bytes = "0010203040".hexbytes
     thing.uint64 = 42949672950u64
     thing.uint32 = 4294967295u32
+    thing.other = Other.new(foo: "bar")
     thing.to_protobuf.should eq data("Basic.1")
   end
 
@@ -89,6 +96,7 @@ describe Protocr do
     thing = Basic.new
     thing.string = "String"
     thing.uint64 = 0u64
+    thing.other = Other.new()
     thing.to_protobuf.should eq data("Basic.2")
   end
 
@@ -97,6 +105,7 @@ describe Protocr do
     thing.clear_bytes!
     thing.uint64 = 0u64
     thing.clear_uint32!
+    thing.other.clear_foo!
     thing.to_protobuf.should eq data("Basic.2")
   end
 end
