@@ -30,10 +30,10 @@ public final class MessageGenerator extends Generator {
     for (var field : this.fields) {
       append("%s : %s? = nil, ".formatted(field.name(), field.type().crystalType()));
     }
+    append(")\n").indent();
     if (presenceByteSize != 0) {
       append("@_presence = ::Protocr::StaticBitset(%d).new\n".formatted(presenceByteSize));
     }
-    append(")\n").indent();
     for (var field : this.fields) {
       int cIdx = this.compactable.indexOf(field.name());
       if (cIdx == -1) {
