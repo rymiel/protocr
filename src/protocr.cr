@@ -1,11 +1,11 @@
 module Protocr
   enum WireType : UInt8
-    VarInt = 0
-    I64 = 1
-    Len = 2
-    SGroup = 3
-    EGroup = 4
-    I32 = 5
+    VarInt  =   0
+    I64     =   1
+    Len     =   2
+    SGroup  =   3
+    EGroup  =   4
+    I32     =   5
     Invalid = 255
   end
 
@@ -80,9 +80,9 @@ module Protocr
 
     def skip(wire_type : WireType) : Nil
       case wire_type
-      when .len? then read_bytes # can be optimized
+      when .len?     then read_bytes # can be optimized
       when .var_int? then read_varint_u64
-      else raise "todo"
+      else                raise "todo"
       end
     end
   end

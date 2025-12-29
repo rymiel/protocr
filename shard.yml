@@ -1,0 +1,15 @@
+name: protocr
+version: 0.1.0
+
+authors:
+  - Emilia Kond <emilia@rymiel.space>
+
+executables:
+  - protocr
+
+scripts:
+  postinstall: make bin/protocr
+
+crystal: '>= 1.18.2'
+
+license: MIT
