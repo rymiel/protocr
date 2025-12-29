@@ -33,6 +33,36 @@ module Protocr
     end
   end
 
+  def self.read_varint(io : IO) : UInt64?
+    n = 0u64
+    shift = 0
+    loop do
+      if shift >= 64
+        raise "buffer overflow uleb128"
+      end
+      byte = io.read_byte
+      return nil if byte.nil?
+
+      n |= ((byte.to_u64 & 0x7F) << shift)
+      shift += 7
+      if (byte & 0x80) == 0
+        return n.to_u64
+      end
+    end
+  end
+
+  def self.write_varint(io : IO, n : UInt64) : Nil
+    loop do
+      b = n & 0x7F
+      n >>= 7
+      if n == 0
+        io.write_byte(b.to_u8!)
+        break
+      end
+      io.write_byte (b | 0x80).to_u8!
+    end
+  end
+
   class Reader
     @io : IO::Memory
 
@@ -41,21 +71,7 @@ module Protocr
     end
 
     def read_varint_u64 : UInt64?
-      n = 0u64
-      shift = 0
-      loop do
-        if shift >= 64
-          raise "buffer overflow varint"
-        end
-        byte = @io.read_byte
-        return nil if byte.nil?
-
-        n |= ((byte.to_u64 & 0x7F) << shift)
-        shift += 7
-        if (byte & 0x80) == 0
-          return n.to_u64
-        end
-      end
+      Protocr.read_varint(@io)
     end
 
     def read_varint_u32 : UInt32?
@@ -119,15 +135,7 @@ module Protocr
     end
 
     def write_varint_u64(n : UInt64) : Nil
-      loop do
-        b = n & 0x7F
-        n >>= 7
-        if n == 0
-          @io.write_byte(b.to_u8!)
-          break
-        end
-        @io.write_byte (b | 0x80).to_u8!
-      end
+      Protocr.write_varint(@io, n)
     end
 
     def write_varint_u32(n : UInt32) : Nil
