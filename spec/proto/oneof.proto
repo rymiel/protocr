@@ -1,0 +1,26 @@
+syntax = "proto3";
+
+package protocr.spec;
+
+message Container {
+  optional uint32 id = 1;
+  oneof content {
+    MessageX x = 2;
+    MessageY y = 3;
+  }
+}
+
+message MessageX {
+  optional string value = 50;
+}
+
+message MessageY {
+  optional uint64 value = 1000;
+}
+
+// Alternative of Container without oneof to encode messages with multiple oneof fields set
+message ContainerBoth {
+  optional uint32 id = 1;
+  MessageX x = 2;
+  MessageY y = 3;
+}

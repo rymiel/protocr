@@ -31,5 +31,5 @@ spec: bin/protocr $(SPEC_BINPB) $(SPEC_TXTPB) $(SPEC_PROTO) $(SPEC_GEN)
 
 clean:
 	rm -f bin/protocr
-	rm -f $(SPEC_BINPB)
-	rm -f $(SPEC_GEN)
+	rm -rf spec/binary
+	rm -rf spec/gen

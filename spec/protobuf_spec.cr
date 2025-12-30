@@ -75,6 +75,39 @@ describe Protocr do
     # "a" field has been skipped
   end
 
+  it "decodes oneof" do
+    thing = Container.from_protobuf data("Container.1")
+    thing.has_id?.should be_true
+    thing.id.should eq 50u32
+    thing.has_x?.should be_true
+    # TODO: equality operator
+    # thing.x.should eq MessageX.new(value: "meow")
+    thing.x.has_value?.should be_true
+    thing.x.value.should eq "meow"
+    thing.has_y?.should be_false
+    # TODO: equality operator
+    # thing.y.should eq MessageY.new()
+    thing.y.has_value?.should be_false
+    thing.y.value.should eq 0u32
+  end
+
+  pending "decodes oneof exclusivity" do
+    thing = Container.from_protobuf data("ContainerBoth.1")
+    thing.has_id?.should be_true
+    thing.id.should eq 50u32
+    # "y" comes later
+    thing.has_x?.should be_false
+    # TODO: equality operator
+    # thing.x.should eq MessageX.new()
+    thing.x.has_value?.should be_false
+    thing.x.value.should eq ""
+    thing.has_y?.should be_true
+    # TODO: equality operator
+    # thing.y.should eq MessageY.new(value: 2222u32)
+    thing.x.has_value?.should be_true
+    thing.x.value.should eq 2222u32
+  end
+
   it "encodes simple" do
     thing = Simple.new
     thing.text = "Hello, world!"
