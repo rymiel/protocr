@@ -8,18 +8,58 @@ public class StringUtil {
   private StringUtil() {
   }
 
-  static String titlecase(String s) {
-    if (s.isEmpty()) return "";
-    return s.substring(0, 1).toUpperCase(Locale.ROOT) + s.substring(1);
+  /**
+   * Converts a Protobuf namespaced name to a Crystal namespaced name.
+   *
+   * @param input Protobuf name (e.g., "foo.bar_baz.Message")
+   * @return Crystal name (e.g., "Foo::BarBaz::Message")
+   */
+  public static String crystalTypeName(String input) {
+    if (input == null || input.isEmpty()) {
+      return input;
+    }
+
+    String[] segments = input.split("\\.", -1);
+    StringBuilder result = new StringBuilder();
+
+    for (int i = 0; i < segments.length; i++) {
+      if (i > 0) {
+        result.append("::");
+      }
+      result.append(snakeToPascalCase(segments[i]));
+    }
+
+    return result.toString();
   }
 
-  public static String nsCrystal(String ns) {
-    return Arrays.stream(ns.split("\\.")).map(StringUtil::titlecase).collect(Collectors.joining("::"));
-  }
+  /**
+   * Converts a snake_case string to PascalCase.
+   *
+   * @param input snake_case string (e.g., "foo_bar")
+   * @return PascalCase string (e.g., "FooBar")
+   */
+  private static String snakeToPascalCase(String input) {
+    if (input == null || input.isEmpty()) {
+      return input;
+    }
 
-  public static String crystalTypeName(String s) {
-    String ns = nsCrystal(s.substring(0, s.lastIndexOf('.')));
-    return ns + "::" + s.substring(s.lastIndexOf('.') + 1);
+    StringBuilder result = new StringBuilder();
+    boolean capitalizeNext = true;
+
+    for (int i = 0; i < input.length(); i++) {
+      char c = input.charAt(i);
+
+      if (c == '_') {
+        capitalizeNext = true;
+      } else if (capitalizeNext) {
+        result.append(Character.toUpperCase(c));
+        capitalizeNext = false;
+      } else {
+        result.append(c);
+      }
+    }
+
+    return result.toString();
   }
 
   static String crystalFilename(String name) {

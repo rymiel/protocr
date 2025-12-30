@@ -20,13 +20,17 @@ public class FileGenerator extends Generator {
       append("require \"./%s\"\n".formatted(StringUtil.crystalFilename(dep)));
     }
 
-    var ns = StringUtil.nsCrystal(file.getPackage());
-    append("\nmodule %s\n".formatted(ns)).indent(); // TODO: skip if no namespace
+    var ns = StringUtil.crystalTypeName(file.getPackage());
+    if (!ns.isEmpty()) {
+      append("\nmodule %s\n".formatted(ns)).indent();
+    }
 
     for (var msg : file.getMessageTypeList()) {
       new MessageGenerator(this.content, msg).run();
     }
 
-    dedent().append("end\n");
+    if (!ns.isEmpty()) {
+      dedent().append("end\n");
+    }
   }
 }
