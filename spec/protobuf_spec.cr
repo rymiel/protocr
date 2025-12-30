@@ -157,4 +157,24 @@ describe Protocr do
     # x clears y
     thing.to_protobuf.should eq data("Container.1")
   end
+
+  it "clears explicit presence value" do
+    thing = Incremental.new
+
+    thing.has_a?.should be_false
+    thing.a.should eq 0
+    thing.should eq Incremental.new()
+
+    thing.a = 10
+
+    thing.has_a?.should be_true
+    thing.a.should eq 10
+    thing.should eq Incremental.new(a: 10)
+
+    thing.clear_a!
+
+    thing.has_a?.should be_false
+    thing.a.should eq 0
+    thing.should eq Incremental.new()
+  end
 end

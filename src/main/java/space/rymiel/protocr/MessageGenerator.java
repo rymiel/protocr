@@ -189,9 +189,10 @@ public final class MessageGenerator extends Generator {
             @_presence.test(%3$d)
           end
           def clear_%1$s! : Nil
+            @%1$s = %4$s
             @_presence.set(%3$d, false)
           end
-          """, field.name(), field.type().crystalType(), field.cIdx()));
+          """, field.name(), field.type().crystalType(), field.cIdx(), field.type().defaultEmpty()));
     }
 
     append("def %1$s=(value : %2$s) : Nil\n".formatted(field.name(), field.type().crystalType())).indent();
