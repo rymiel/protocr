@@ -83,7 +83,6 @@ describe Protocr do
     thing.x.value.should eq "meow"
     thing.has_y?.should be_false
     thing.y.should eq MessageY.new()
-    thing.y == MessageY.new(value: 2222u32)
     thing.y.has_value?.should be_false
     thing.y.value.should eq 0u32
     thing.content.should eq MessageX.new(value: "meow")
@@ -148,5 +147,14 @@ describe Protocr do
     thing.clear_uint32!
     thing.other.clear_foo!
     thing.to_protobuf.should eq data("Basic.2")
+  end
+
+  it "encodes oneof exclusivity" do
+    thing = Container.new
+    thing.id = 50u32
+    thing.y = MessageY.new(value: 2222u32)
+    thing.x = MessageX.new(value: "meow")
+    # x clears y
+    thing.to_protobuf.should eq data("Container.1")
   end
 end

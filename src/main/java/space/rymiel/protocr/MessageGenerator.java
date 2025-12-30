@@ -107,10 +107,7 @@ public final class MessageGenerator extends Generator {
             @_presence.set(%4$d, true)
             """, field.number(), field.name(), field.type().readerMethod(), field.cIdx()));
       }
-      for (var sibling : field.oneOfSiblings()) {
-        if (sibling == field) continue;
-        generateClear(sibling);
-      }
+      field.oneOfSiblings().forEach(this::generateClear);
       dedent();
     }
     append("else r.skip wire_type\n");
@@ -131,21 +128,12 @@ public final class MessageGenerator extends Generator {
     append("def to_protobuf(io : ::IO)\n").indent();
     append("w = ::Protocr::Writer.new io\n");
     for (var field : this.fields) {
-      if (field.cIdx() == -1) {
-        append(String.format("""
-            if !(v = @%1$s).nil?
-              w.write_tag(%2$d, ::Protocr::WireType::%3$s)
-              w.%4$s(v)
-            end
-            """, field.name(), field.number(), field.type().wireType(), field.type().writerMethod()));
-      } else {
-        append(String.format("""
-            if @_presence.test(%5$d)
-              w.write_tag(%2$d, ::Protocr::WireType::%3$s)
-              w.%4$s(@%1$s)
-            end
-            """, field.name(), field.number(), field.type().wireType(), field.type().writerMethod(), field.cIdx()));
-      }
+      append(String.format("""
+          if has_%1$s?
+            w.write_tag(%2$d, ::Protocr::WireType::%3$s)
+            w.%4$s(@%1$s.not_nil!)
+          end
+          """, field.name(), field.number(), field.type().wireType(), field.type().writerMethod()));
     }
     dedent().append("end\n");
 
@@ -192,9 +180,6 @@ public final class MessageGenerator extends Generator {
           def has_%s? : Bool
             !@%1$s.nil?
           end
-          def %1$s=(value : %2$s) : Nil
-            @%1$s = value
-          end
           """, field.name(), field.type().crystalType(), field.type().defaultEmpty()));
     } else {
       append(String.format("""
@@ -206,12 +191,16 @@ public final class MessageGenerator extends Generator {
           def has_%s? : Bool
             @_presence.test(%3$d)
           end
-          def %1$s=(value : %2$s) : Nil
-            @%1$s = value
-            @_presence.set(%3$d, true)
-          end
           """, field.name(), field.type().crystalType(), field.cIdx()));
     }
+
+    append("def %1$s=(value : %2$s) : Nil\n".formatted(field.name(), field.type().crystalType())).indent();
+    append("@%1$s = value\n".formatted(field.name()));
+    if (field.cIdx() != -1) {
+      append(String.format("@_presence.set(%1$d, true)\n", field.cIdx()));
+    }
+    field.oneOfSiblings().forEach(this::generateClear);
+    dedent().append("end\n");
 
     append("def clear_%1$s! : Nil\n".formatted(field.name())).indent();
     generateClear(field);
