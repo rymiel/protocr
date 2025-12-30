@@ -86,6 +86,7 @@ describe Protocr do
     thing.y == MessageY.new(value: 2222u32)
     thing.y.has_value?.should be_false
     thing.y.value.should eq 0u32
+    thing.content.should eq MessageX.new(value: "meow")
   end
 
   it "decodes oneof exclusivity" do
@@ -97,6 +98,18 @@ describe Protocr do
     thing.x.should eq MessageX.new()
     thing.has_y?.should be_true
     thing.y.should eq MessageY.new(value: 2222u32)
+    thing.content.should eq MessageY.new(value: 2222u32)
+  end
+
+  it "decodes oneof neither" do
+    thing = Container.from_protobuf data("Container.2")
+    thing.has_id?.should be_true
+    thing.id.should eq 51u32
+    thing.has_x?.should be_false
+    thing.x.should eq MessageX.new()
+    thing.has_y?.should be_false
+    thing.y.should eq MessageY.new()
+    thing.content.should be_nil
   end
 
   it "encodes simple" do

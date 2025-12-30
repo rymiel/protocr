@@ -46,6 +46,7 @@ public final class MessageGenerator extends Generator {
 
     List<OneOf> oneOfs = new ArrayList<>();
     for (int i = 0; i < oneOfMembers.size(); i++) {
+      if (oneOfMembers.get(i).isEmpty()) continue;
       oneOfs.add(new OneOf(message.getOneofDecl(i).getName(), List.copyOf(oneOfMembers.get(i))));
     }
     this.oneOfs = List.copyOf(oneOfs);
@@ -217,6 +218,20 @@ public final class MessageGenerator extends Generator {
     dedent().append("end\n\n");
   }
 
+  private void generateOneOfGetter(OneOf oneOf) {
+    append("def %s : ::Union(".formatted(oneOf.name()));
+    for (Field field : oneOf.members()) {
+      append(field.type().crystalType()).append(", ");
+    }
+    append("Nil)\n").indent();
+    append("case\n");
+    for (Field field : oneOf.members()) {
+      append("when has_%1$s? then %1$s\n".formatted(field.name()));
+    }
+    append("else nil\nend\n");
+    dedent().append("end\n");
+  }
+
   private void generatePresence() {
     if (this.presenceByteSize != 0)
       append("@_presence : ::Protocr::StaticBitset(%1$d)\n".formatted(this.presenceByteSize));
@@ -229,6 +244,10 @@ public final class MessageGenerator extends Generator {
 
     for (var field : this.fields) {
       generateProperty(field);
+    }
+
+    for (var oneOf : this.oneOfs) {
+      generateOneOfGetter(oneOf);
     }
 
     generateCanonicalConstructor();
