@@ -31,6 +31,12 @@ describe Protocr do
     thing.other.foo.should eq "bar"
   end
 
+  it "decomes basic equality" do
+    Basic.from_protobuf(data "Basic.1").should eq Basic.new(
+      string: "String", bytes: "0010203040".hexbytes, uint64: 42949672950u64, uint32: 4294967295u32, other: Other.new(foo: "bar")
+    )
+  end
+
   it "decodes basic partial" do
     thing = Basic.from_protobuf data("Basic.2")
     thing.has_string?.should be_true
@@ -42,7 +48,7 @@ describe Protocr do
     thing.has_uint32?.should be_false
     thing.uint32.should eq 0u32
     thing.has_other?.should be_true
-    thing.other.should eq Other.new()
+    thing.other.should eq Other.new
     thing.other.has_foo?.should be_false
     thing.other.foo.should be_empty
   end
@@ -82,7 +88,7 @@ describe Protocr do
     thing.x.has_value?.should be_true
     thing.x.value.should eq "meow"
     thing.has_y?.should be_false
-    thing.y.should eq MessageY.new()
+    thing.y.should eq MessageY.new
     thing.y.has_value?.should be_false
     thing.y.value.should eq 0u32
     thing.content.should eq MessageX.new(value: "meow")
@@ -94,7 +100,7 @@ describe Protocr do
     thing.id.should eq 50u32
     # "y" comes later
     thing.has_x?.should be_false
-    thing.x.should eq MessageX.new()
+    thing.x.should eq MessageX.new
     thing.has_y?.should be_true
     thing.y.should eq MessageY.new(value: 2222u32)
     thing.content.should eq MessageY.new(value: 2222u32)
@@ -105,9 +111,9 @@ describe Protocr do
     thing.has_id?.should be_true
     thing.id.should eq 51u32
     thing.has_x?.should be_false
-    thing.x.should eq MessageX.new()
+    thing.x.should eq MessageX.new
     thing.has_y?.should be_false
-    thing.y.should eq MessageY.new()
+    thing.y.should eq MessageY.new
     thing.content.should be_nil
   end
 
@@ -136,7 +142,7 @@ describe Protocr do
     thing = Basic.new
     thing.string = "String"
     thing.uint64 = 0u64
-    thing.other = Other.new()
+    thing.other = Other.new
     thing.to_protobuf.should eq data("Basic.2")
   end
 

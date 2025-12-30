@@ -149,12 +149,19 @@ public final class MessageGenerator extends Generator {
   }
 
   private void generateEquality() {
-    append("def_equals_and_hash ");
+    append("def ==(other : self)\n").indent();
+    append("return true if same?(other)\n");
     for (var field : this.fields) {
-      // TODO: can technically be more efficient: if has_value? is false for both, no need to compare the actual values
-      append("has_%1$s?, %1$s".formatted(field.name()));
+      if (field.cIdx() != -1) {
+        append("return false unless @%1$s == other.@%1$s\n".formatted(field.name()));
+      } else {
+        // TODO: can technically be more efficient: if has_value? is false for both, no need to compare the actual values
+        append("return false unless self.has_%1$s? == other.has_%1$s?\n".formatted(field.name()));
+        append("return false unless self.%1$s == other.%1$s\n".formatted(field.name()));
+      }
     }
-    append("\n");
+    append("return true\n");
+    dedent().append("end\n");
   }
 
   private void generateProperty(Field field) {
