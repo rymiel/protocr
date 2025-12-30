@@ -26,8 +26,7 @@ describe Protocr do
     thing.has_uint32?.should be_true
     thing.uint32.should eq 4294967295u32
     thing.has_other?.should be_true
-    # TODO: equality operator
-    # thing.other.should eq Other.new(foo: "bar")
+    thing.other.should eq Other.new(foo: "bar")
     thing.other.has_foo?.should be_true
     thing.other.foo.should eq "bar"
   end
@@ -43,8 +42,7 @@ describe Protocr do
     thing.has_uint32?.should be_false
     thing.uint32.should eq 0u32
     thing.has_other?.should be_true
-    # TODO: equality operator
-    # thing.other.should eq Other.new()
+    thing.other.should eq Other.new()
     thing.other.has_foo?.should be_false
     thing.other.foo.should be_empty
   end
@@ -80,13 +78,12 @@ describe Protocr do
     thing.has_id?.should be_true
     thing.id.should eq 50u32
     thing.has_x?.should be_true
-    # TODO: equality operator
-    # thing.x.should eq MessageX.new(value: "meow")
+    thing.x.should eq MessageX.new(value: "meow")
     thing.x.has_value?.should be_true
     thing.x.value.should eq "meow"
     thing.has_y?.should be_false
-    # TODO: equality operator
-    # thing.y.should eq MessageY.new()
+    thing.y.should eq MessageY.new()
+    thing.y == MessageY.new(value: 2222u32)
     thing.y.has_value?.should be_false
     thing.y.value.should eq 0u32
   end
@@ -97,13 +94,11 @@ describe Protocr do
     thing.id.should eq 50u32
     # "y" comes later
     thing.has_x?.should be_false
-    # TODO: equality operator
-    # thing.x.should eq MessageX.new()
+    thing.x.should eq MessageX.new()
     thing.x.has_value?.should be_false
     thing.x.value.should eq ""
     thing.has_y?.should be_true
-    # TODO: equality operator
-    # thing.y.should eq MessageY.new(value: 2222u32)
+    thing.y.should eq MessageY.new(value: 2222u32)
     thing.x.has_value?.should be_true
     thing.x.value.should eq 2222u32
   end

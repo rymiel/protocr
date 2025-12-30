@@ -128,6 +128,15 @@ public final class MessageGenerator extends Generator {
         """);
   }
 
+  private void generateEquality() {
+    append("def_equals_and_hash ");
+    for (var field : this.fields) {
+      // TODO: can technically be more efficient: if has_value? is false for both, no need to compare the actual values
+      append("has_%1$s?, %1$s".formatted(field.name()));
+    }
+    append("\n");
+  }
+
   private void generateProperty(Field field) {
     int cIdx = this.compactable.indexOf(field.name());
     if (cIdx == -1) {
@@ -193,6 +202,7 @@ public final class MessageGenerator extends Generator {
     generateCanonicalConstructor();
     generateDeserializeConstructor();
     generateSerializer();
+    generateEquality();
 
     dedent().append("end\n\n");
   }
