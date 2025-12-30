@@ -4,13 +4,11 @@ import com.google.protobuf.DescriptorProtos;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Optional;
 
 public final class MessageGenerator extends Generator {
   private final DescriptorProtos.DescriptorProto message;
   private final List<Field> fields;
   private final List<OneOf> oneOfs;
-  private final List<String> compactable;
   private final int presenceByteSize;
 
   MessageGenerator(IndentedWriter content, DescriptorProtos.DescriptorProto message) {
@@ -23,10 +21,24 @@ public final class MessageGenerator extends Generator {
     }
 
     List<Field> fields = new ArrayList<>();
+    int compactableCount = 0;
     for (var fieldProto : message.getFieldList()) {
-      Field field = new Field(fieldProto);
+      // need a whole bunch more unsupported operation exceptions lmao
+      if (fieldProto.getLabel() != DescriptorProtos.FieldDescriptorProto.Label.LABEL_OPTIONAL) {
+        throw new UnsupportedOperationException(fieldProto.toString());
+      }
+
+      ProtoType type = ProtoType.of(fieldProto);
+      int cIdx = type.compactable() ? compactableCount++ : -1;
+      // I want the array to be immutable but idk how to initialize everything nicely :(
+      Field field = new Field(fieldProto.getName(), fieldProto.getNumber(), type, cIdx, new ArrayList<>());
       if (!fieldProto.getProto3Optional() && fieldProto.hasOneofIndex()) {
-        oneOfMembers.get(fieldProto.getOneofIndex()).add(field);
+        var siblings = oneOfMembers.get(fieldProto.getOneofIndex());
+        field.oneOfSiblings().addAll(siblings);
+        for (Field sibling : siblings) {
+          sibling.oneOfSiblings().add(field);
+        }
+        siblings.add(field);
       }
       fields.add(field);
     }
@@ -38,23 +50,7 @@ public final class MessageGenerator extends Generator {
     }
     this.oneOfs = List.copyOf(oneOfs);
 
-    var compactable = new ArrayList<String>();
-    for (Field field : this.fields) {
-      if (field.type().compactable()) {
-        compactable.add(field.name());
-      }
-    }
-    this.compactable = List.copyOf(compactable);
-    this.presenceByteSize = (this.compactable.size() + 7) / 8;
-  }
-
-  // Need better data modelling to get rid of these nasty things
-  private Optional<OneOf> oneOfForField(Field field) {
-    return this.oneOfs.stream().filter(one -> one.members().contains(field)).findFirst();
-  }
-
-  private int compactableIndexForField(Field field) {
-    return this.compactable.indexOf(field.name());
+    this.presenceByteSize = (compactableCount + 7) / 8;
   }
 
   private void generateCanonicalConstructor() {
@@ -67,8 +63,7 @@ public final class MessageGenerator extends Generator {
       append("@_presence = ::Protocr::StaticBitset(%d).new\n".formatted(presenceByteSize));
     }
     for (var field : this.fields) {
-      int cIdx = compactableIndexForField(field);
-      if (cIdx == -1) {
+      if (field.cIdx() == -1) {
         append("@%1$s = %1$s\n".formatted(field.name()));
       } else {
         append(String.format("""
@@ -78,7 +73,7 @@ public final class MessageGenerator extends Generator {
               @_presence.set(%3$d, true)
               @%1$s = %1$s
             end
-            """, field.name(), field.type().defaultEmpty(), cIdx));
+            """, field.name(), field.type().defaultEmpty(), field.cIdx()));
       }
     }
     dedent().append("end\n\n");
@@ -87,8 +82,7 @@ public final class MessageGenerator extends Generator {
   private void generateDeserializeConstructor() {
     append("def initialize(r : ::Protocr::Reader)\n").indent();
     for (var field : this.fields) {
-      int cIdx = compactableIndexForField(field);
-      if (cIdx == -1) {
+      if (field.cIdx() == -1) {
         append("@%s = nil\n".formatted(field.name()));
       } else {
         append("@%s = %s\n".formatted(field.name(), field.type().defaultEmpty()));
@@ -102,23 +96,20 @@ public final class MessageGenerator extends Generator {
     append("case field\n");
     append("when 0 then break\n");
     for (var field : this.fields) {
-      int cIdx = compactableIndexForField(field);
       append("when %d\n".formatted(field.number())).indent();
-      if (cIdx == -1) {
+      if (field.cIdx() == -1) {
         // TODO: merge messages? apparently valid
         append("@%s = r.%s\n".formatted(field.name(), field.type().readerMethod()));
       } else {
         append(String.format("""
             @%2$s = r.%3$s.not_nil!
             @_presence.set(%4$d, true)
-            """, field.number(), field.name(), field.type().readerMethod(), cIdx));
+            """, field.number(), field.name(), field.type().readerMethod(), field.cIdx()));
       }
-      oneOfForField(field).ifPresent(oneOf -> {
-        for (var sibling : oneOf.members()) {
-          if (sibling == field) continue;
-          generateClear(sibling);
-        }
-      });
+      for (var sibling : field.oneOfSiblings()) {
+        if (sibling == field) continue;
+        generateClear(sibling);
+      }
       dedent();
     }
     append("else r.skip wire_type\n");
@@ -139,8 +130,7 @@ public final class MessageGenerator extends Generator {
     append("def to_protobuf(io : ::IO)\n").indent();
     append("w = ::Protocr::Writer.new io\n");
     for (var field : this.fields) {
-      int cIdx = compactableIndexForField(field);
-      if (cIdx == -1) {
+      if (field.cIdx() == -1) {
         append(String.format("""
             if !(v = @%1$s).nil?
               w.write_tag(%2$d, ::Protocr::WireType::%3$s)
@@ -153,7 +143,7 @@ public final class MessageGenerator extends Generator {
               w.write_tag(%2$d, ::Protocr::WireType::%3$s)
               w.%4$s(@%1$s)
             end
-            """, field.name(), field.number(), field.type().wireType(), field.type().writerMethod(), cIdx));
+            """, field.name(), field.number(), field.type().wireType(), field.type().writerMethod(), field.cIdx()));
       }
     }
     dedent().append("end\n");
@@ -177,17 +167,15 @@ public final class MessageGenerator extends Generator {
   }
 
   private void generateClear(Field field) {
-    int cIdx = compactableIndexForField(field);
-    if (cIdx == -1) {
+    if (field.cIdx() == -1) {
       append("@%s = nil\n".formatted(field.name()));
     } else {
-      append("@_presence.set(%d, false)\n".formatted(cIdx));
+      append("@_presence.set(%d, false)\n".formatted(field.cIdx()));
     }
   }
 
   private void generateProperty(Field field) {
-    int cIdx = compactableIndexForField(field);
-    if (cIdx == -1) {
+    if (field.cIdx() == -1) {
       // TODO: modifying the value returned by the getter if it was nil will not modify the message, which is likely unintuitive,
       //       but then, should the mere act of trying to access the field cause it to become the active oneof, if it's part of one?
       //       I think the spec wants me to do that, but that seems confusing too. Crystal just doesn't have a notion of mutability in that way.
@@ -221,7 +209,7 @@ public final class MessageGenerator extends Generator {
             @%1$s = value
             @_presence.set(%3$d, true)
           end
-          """, field.name(), field.type().crystalType(), cIdx));
+          """, field.name(), field.type().crystalType(), field.cIdx()));
     }
 
     append("def clear_%1$s! : Nil\n".formatted(field.name())).indent();
