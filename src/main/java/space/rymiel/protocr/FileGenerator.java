@@ -21,7 +21,7 @@ public class FileGenerator extends Generator {
     }
 
     var ns = StringUtil.nsCrystal(file.getPackage());
-    append("\nmodule %s\n".formatted(ns)).indent();
+    append("\nmodule %s\n".formatted(ns)).indent(); // TODO: skip if no namespace
 
     for (var msg : file.getMessageTypeList()) {
       new MessageGenerator(this.content, msg).run();

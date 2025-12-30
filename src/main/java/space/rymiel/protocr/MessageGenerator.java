@@ -72,6 +72,7 @@ public final class MessageGenerator extends Generator {
     for (var field : this.fields) {
       int cIdx = this.compactable.indexOf(field.name());
       if (cIdx == -1) {
+        // TODO: merge messages? apparently valid
         append("when %d then @%s = r.%s\n".formatted(field.number(), field.name(), field.type().readerMethod()));
       } else {
         append(String.format("""
@@ -130,6 +131,12 @@ public final class MessageGenerator extends Generator {
   private void generateProperty(Field field) {
     int cIdx = this.compactable.indexOf(field.name());
     if (cIdx == -1) {
+      // TODO: modifying the value returned by the getter if it was nil will not modify the message, which is likely unintuitive,
+      //       but then, should the mere act of trying to access the field cause it to become the active oneof, if it's part of one?
+      //       I think the spec wants me to do that, but that seems confusing too. Crystal just doesn't have a notion of mutability in that way.
+      //       Of course, I can also consider changing these into structs. I guess that's sort of how the java implementation gets
+      //       away with mutability stuff, by having separate classes for mutable and immutable instances, but that fits into Java
+      //       and doesn't really fit into Crystal.
       append(String.format("""
           @%1$s : %2$s?
           
