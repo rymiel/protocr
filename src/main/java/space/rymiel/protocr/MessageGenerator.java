@@ -107,7 +107,9 @@ public final class MessageGenerator extends Generator {
             @_presence.set(%4$d, true)
             """, field.number(), field.name(), field.type().readerMethod(), field.cIdx()));
       }
-      field.oneOfSiblings().forEach(this::generateClear);
+      for (Field sibling : field.oneOfSiblings()) {
+        append("clear_%s!\n".formatted(sibling.name()));
+      }
       dedent();
     }
     append("else r.skip wire_type\n");
@@ -155,14 +157,6 @@ public final class MessageGenerator extends Generator {
     append("\n");
   }
 
-  private void generateClear(Field field) {
-    if (field.cIdx() == -1) {
-      append("@%s = nil\n".formatted(field.name()));
-    } else {
-      append("@_presence.set(%d, false)\n".formatted(field.cIdx()));
-    }
-  }
-
   private void generateProperty(Field field) {
     if (field.cIdx() == -1) {
       // TODO: modifying the value returned by the getter if it was nil will not modify the message, which is likely unintuitive,
@@ -180,6 +174,9 @@ public final class MessageGenerator extends Generator {
           def has_%s? : Bool
             !@%1$s.nil?
           end
+          def clear_%1$s! : Nil
+            @%1$s = nil
+          end
           """, field.name(), field.type().crystalType(), field.type().defaultEmpty()));
     } else {
       append(String.format("""
@@ -191,6 +188,9 @@ public final class MessageGenerator extends Generator {
           def has_%s? : Bool
             @_presence.test(%3$d)
           end
+          def clear_%1$s! : Nil
+            @_presence.set(%3$d, false)
+          end
           """, field.name(), field.type().crystalType(), field.cIdx()));
     }
 
@@ -199,12 +199,10 @@ public final class MessageGenerator extends Generator {
     if (field.cIdx() != -1) {
       append(String.format("@_presence.set(%1$d, true)\n", field.cIdx()));
     }
-    field.oneOfSiblings().forEach(this::generateClear);
+    for (Field sibling : field.oneOfSiblings()) {
+      append("clear_%s!\n".formatted(sibling.name()));
+    }
     dedent().append("end\n");
-
-    append("def clear_%1$s! : Nil\n".formatted(field.name())).indent();
-    generateClear(field);
-    dedent().append("end\n\n");
   }
 
   private void generateOneOfGetter(OneOf oneOf) {
