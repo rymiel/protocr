@@ -4,17 +4,40 @@ import com.google.protobuf.DescriptorProtos;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 public final class MessageGenerator extends Generator {
   private final DescriptorProtos.DescriptorProto message;
   private final List<Field> fields;
+  private final List<OneOf> oneOfs;
   private final List<String> compactable;
   private final int presenceByteSize;
 
   MessageGenerator(IndentedWriter content, DescriptorProtos.DescriptorProto message) {
     super(content);
     this.message = message;
-    this.fields = message.getFieldList().stream().map(Field::new).toList();
+
+    var oneOfMembers = new ArrayList<List<Field>>();
+    for (int i = 0; i < message.getOneofDeclCount(); i++) {
+      oneOfMembers.add(new ArrayList<>());
+    }
+
+    List<Field> fields = new ArrayList<>();
+    for (var fieldProto : message.getFieldList()) {
+      Field field = new Field(fieldProto);
+      if (!fieldProto.getProto3Optional() && fieldProto.hasOneofIndex()) {
+        oneOfMembers.get(fieldProto.getOneofIndex()).add(field);
+      }
+      fields.add(field);
+    }
+    this.fields = List.copyOf(fields);
+
+    List<OneOf> oneOfs = new ArrayList<>();
+    for (int i = 0; i < oneOfMembers.size(); i++) {
+      oneOfs.add(new OneOf(message.getOneofDecl(i).getName(), List.copyOf(oneOfMembers.get(i))));
+    }
+    this.oneOfs = List.copyOf(oneOfs);
+
     var compactable = new ArrayList<String>();
     for (Field field : this.fields) {
       if (field.type().compactable()) {
@@ -23,6 +46,15 @@ public final class MessageGenerator extends Generator {
     }
     this.compactable = List.copyOf(compactable);
     this.presenceByteSize = (this.compactable.size() + 7) / 8;
+  }
+
+  // Need better data modelling to get rid of these nasty things
+  private Optional<OneOf> oneOfForField(Field field) {
+    return this.oneOfs.stream().filter(one -> one.members().contains(field)).findFirst();
+  }
+
+  private int compactableIndexForField(Field field) {
+    return this.compactable.indexOf(field.name());
   }
 
   private void generateCanonicalConstructor() {
@@ -35,7 +67,7 @@ public final class MessageGenerator extends Generator {
       append("@_presence = ::Protocr::StaticBitset(%d).new\n".formatted(presenceByteSize));
     }
     for (var field : this.fields) {
-      int cIdx = this.compactable.indexOf(field.name());
+      int cIdx = compactableIndexForField(field);
       if (cIdx == -1) {
         append("@%1$s = %1$s\n".formatted(field.name()));
       } else {
@@ -55,7 +87,7 @@ public final class MessageGenerator extends Generator {
   private void generateDeserializeConstructor() {
     append("def initialize(r : ::Protocr::Reader)\n").indent();
     for (var field : this.fields) {
-      int cIdx = this.compactable.indexOf(field.name());
+      int cIdx = compactableIndexForField(field);
       if (cIdx == -1) {
         append("@%s = nil\n".formatted(field.name()));
       } else {
@@ -70,17 +102,24 @@ public final class MessageGenerator extends Generator {
     append("case field\n");
     append("when 0 then break\n");
     for (var field : this.fields) {
-      int cIdx = this.compactable.indexOf(field.name());
+      int cIdx = compactableIndexForField(field);
+      append("when %d\n".formatted(field.number())).indent();
       if (cIdx == -1) {
         // TODO: merge messages? apparently valid
-        append("when %d then @%s = r.%s\n".formatted(field.number(), field.name(), field.type().readerMethod()));
+        append("@%s = r.%s\n".formatted(field.name(), field.type().readerMethod()));
       } else {
         append(String.format("""
-            when %1$d
-              @%2$s = r.%3$s.not_nil!
-              @_presence.set(%4$d, true)
+            @%2$s = r.%3$s.not_nil!
+            @_presence.set(%4$d, true)
             """, field.number(), field.name(), field.type().readerMethod(), cIdx));
       }
+      oneOfForField(field).ifPresent(oneOf -> {
+        for (var sibling : oneOf.members()) {
+          if (sibling == field) continue;
+          generateClear(sibling);
+        }
+      });
+      dedent();
     }
     append("else r.skip wire_type\n");
     append("end\n").dedent().append("end\n");
@@ -100,7 +139,7 @@ public final class MessageGenerator extends Generator {
     append("def to_protobuf(io : ::IO)\n").indent();
     append("w = ::Protocr::Writer.new io\n");
     for (var field : this.fields) {
-      int cIdx = this.compactable.indexOf(field.name());
+      int cIdx = compactableIndexForField(field);
       if (cIdx == -1) {
         append(String.format("""
             if !(v = @%1$s).nil?
@@ -137,8 +176,17 @@ public final class MessageGenerator extends Generator {
     append("\n");
   }
 
+  private void generateClear(Field field) {
+    int cIdx = compactableIndexForField(field);
+    if (cIdx == -1) {
+      append("@%s = nil\n".formatted(field.name()));
+    } else {
+      append("@_presence.set(%d, false)\n".formatted(cIdx));
+    }
+  }
+
   private void generateProperty(Field field) {
-    int cIdx = this.compactable.indexOf(field.name());
+    int cIdx = compactableIndexForField(field);
     if (cIdx == -1) {
       // TODO: modifying the value returned by the getter if it was nil will not modify the message, which is likely unintuitive,
       //       but then, should the mere act of trying to access the field cause it to become the active oneof, if it's part of one?
@@ -158,10 +206,6 @@ public final class MessageGenerator extends Generator {
           def %1$s=(value : %2$s) : Nil
             @%1$s = value
           end
-          def clear_%1$s! : Nil
-            @%1$s = nil
-          end
-          
           """, field.name(), field.type().crystalType(), field.type().defaultEmpty()));
     } else {
       append(String.format("""
@@ -171,18 +215,18 @@ public final class MessageGenerator extends Generator {
             @%1$s
           end
           def has_%s? : Bool
-            @_presence.test(%3$s)
+            @_presence.test(%3$d)
           end
           def %1$s=(value : %2$s) : Nil
             @%1$s = value
-            @_presence.set(%3$s, true)
+            @_presence.set(%3$d, true)
           end
-          def clear_%1$s! : Nil
-            @_presence.set(%3$s, false)
-          end
-          
           """, field.name(), field.type().crystalType(), cIdx));
     }
+
+    append("def clear_%1$s! : Nil\n".formatted(field.name())).indent();
+    generateClear(field);
+    dedent().append("end\n\n");
   }
 
   private void generatePresence() {

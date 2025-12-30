@@ -88,19 +88,15 @@ describe Protocr do
     thing.y.value.should eq 0u32
   end
 
-  pending "decodes oneof exclusivity" do
+  it "decodes oneof exclusivity" do
     thing = Container.from_protobuf data("ContainerBoth.1")
     thing.has_id?.should be_true
     thing.id.should eq 50u32
     # "y" comes later
     thing.has_x?.should be_false
     thing.x.should eq MessageX.new()
-    thing.x.has_value?.should be_false
-    thing.x.value.should eq ""
     thing.has_y?.should be_true
     thing.y.should eq MessageY.new(value: 2222u32)
-    thing.x.has_value?.should be_true
-    thing.x.value.should eq 2222u32
   end
 
   it "encodes simple" do
