@@ -24,7 +24,7 @@ public record MessageProtoType(DescriptorProtos.FieldDescriptorProto field) impl
   }
 
   @Override
-  public boolean compactable() {
+  public boolean presence() {
     return false;
   }
 

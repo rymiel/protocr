@@ -3,7 +3,7 @@ package space.rymiel.protocr;
 import java.util.Objects;
 
 record SimpleProtoType(String crystalType, String wireType, ValueTransformer transformer, String readerMethod,
-                       String writerMethod, boolean compactable) implements ProtoType {
+                       String writerMethod, boolean presence) implements ProtoType {
   private static final ValueTransformer STRING_VALUE = (s) -> s == null ? "\"\"" : StringUtil.stringify(s);
   private static final ValueTransformer BYTES_VALUE = (s) -> s == null ? "::Bytes.empty" : StringUtil.stringify(s) + ".to_slice";
   private static final ValueTransformer UINT_64_VALUE = new IntSuffixTransformer("u64");

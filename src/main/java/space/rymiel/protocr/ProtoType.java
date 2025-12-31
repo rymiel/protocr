@@ -11,7 +11,7 @@ sealed public interface ProtoType permits MessageProtoType, SimpleProtoType {
 
   String writerMethod();
 
-  boolean compactable();
+  boolean presence();
 
   String defaultValueFor(String value);
 

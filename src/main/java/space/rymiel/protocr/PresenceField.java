@@ -2,16 +2,12 @@ package space.rymiel.protocr;
 
 import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
 
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Objects;
-
 public class PresenceField extends SimpleField {
-  private final int cIdx;
+  private final int presenceBit;
 
-  PresenceField(FieldDescriptorProto protoField, ProtoType type, OneOf oneOf, int cIdx) {
+  PresenceField(FieldDescriptorProto protoField, ProtoType type, OneOf oneOf, int presenceBit) {
     super(protoField, type, oneOf);
-    this.cIdx = cIdx;
+    this.presenceBit = presenceBit;
   }
 
   public void generateAssignNilable(IndentedWriter content) {
@@ -22,7 +18,7 @@ public class PresenceField extends SimpleField {
           @_presence.set(%3$d, true)
           @%1$s = %1$s
         end
-        """, name(), defaultValue(), this.cIdx));
+        """, name(), defaultValue(), this.presenceBit));
   }
 
   @Override
@@ -36,7 +32,7 @@ public class PresenceField extends SimpleField {
     content.append(String.format("""
         @%2$s = r.%3$s.not_nil!
         @_presence.set(%4$d, true)
-        """, number(), name(), type.readerMethod(), this.cIdx));
+        """, number(), name(), type.readerMethod(), this.presenceBit));
     for (SimpleField sibling : oneOfSiblings()) {
       content.append("clear_%s!\n".formatted(sibling.name()));
     }
@@ -63,11 +59,11 @@ public class PresenceField extends SimpleField {
           @%1$s = %4$s
           @_presence.set(%3$d, false)
         end
-        """, name(), type.crystalType(), this.cIdx, defaultValue()));
+        """, name(), type.crystalType(), this.presenceBit, defaultValue()));
 
     content.append("def %1$s=(value : %2$s) : Nil\n".formatted(name(), type.crystalType())).indent();
     content.append("@%1$s = value\n".formatted(name()));
-    content.append("@_presence.set(%1$d, true)\n".formatted(this.cIdx));
+    content.append("@_presence.set(%1$d, true)\n".formatted(this.presenceBit));
     for (SimpleField sibling : oneOfSiblings()) {
       content.append("clear_%s!\n".formatted(sibling.name()));
     }

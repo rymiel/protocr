@@ -24,7 +24,7 @@ public final class MessageGenerator extends Generator {
     }
 
     List<Field> fields = new ArrayList<>();
-    int compactableCount = 0;
+    int presenceBits = 0;
     for (var fp : message.getFieldList()) {
       // need a whole bunch more unsupported operation exceptions lmao
       if (fp.getLabel() != DescriptorProtos.FieldDescriptorProto.Label.LABEL_OPTIONAL) {
@@ -37,7 +37,7 @@ public final class MessageGenerator extends Generator {
         oneOf = oneOfs.get(fp.getOneofIndex());
       }
 
-      SimpleField field = type.compactable() ? new PresenceField(fp, type, oneOf, compactableCount++) : new SimpleField(fp, type, oneOf);
+      SimpleField field = type.presence() ? new PresenceField(fp, type, oneOf, presenceBits++) : new SimpleField(fp, type, oneOf);
 
       fields.add(field);
       if (oneOf != null) oneOf.members().add(field);
@@ -69,7 +69,7 @@ public final class MessageGenerator extends Generator {
     this.fields = List.copyOf(fields);
     this.oneOfs = List.copyOf(oneOfs);
 
-    this.presenceByteSize = (compactableCount + 7) / 8;
+    this.presenceByteSize = (presenceBits + 7) / 8;
   }
 
   private void generateCanonicalConstructor() {
