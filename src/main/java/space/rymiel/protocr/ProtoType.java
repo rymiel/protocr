@@ -2,7 +2,7 @@ package space.rymiel.protocr;
 
 import com.google.protobuf.DescriptorProtos;
 
-sealed interface ProtoType permits MessageProtoType, SimpleProtoType {
+sealed public interface ProtoType permits MessageProtoType, SimpleProtoType {
   String crystalType();
 
   String wireType();

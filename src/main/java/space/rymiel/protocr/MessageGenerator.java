@@ -3,6 +3,7 @@ package space.rymiel.protocr;
 import com.google.protobuf.DescriptorProtos;
 
 import java.util.ArrayList;
+import java.util.Iterator;
 import java.util.List;
 
 public final class MessageGenerator extends Generator {
@@ -15,9 +16,9 @@ public final class MessageGenerator extends Generator {
     super(content);
     this.message = message;
 
-    var oneOfMembers = new ArrayList<List<Field>>();
-    for (int i = 0; i < message.getOneofDeclCount(); i++) {
-      oneOfMembers.add(new ArrayList<>());
+    List<OneOf> oneOfs = new ArrayList<>();
+    for (var o : message.getOneofDeclList()) {
+      oneOfs.add(new OneOf(o.getName(), new ArrayList<>()));
     }
 
     List<Field> fields = new ArrayList<>();
@@ -30,28 +31,30 @@ public final class MessageGenerator extends Generator {
 
       ProtoType type = ProtoType.of(fp);
       int cIdx = type.compactable() ? compactableCount++ : -1;
-
-      // I want the array to be immutable but idk how to initialize everything nicely :(
-      Field field = new Field(fp, type, cIdx, new ArrayList<>());
-
+      OneOf oneOf = null;
       if (!fp.getProto3Optional() && fp.hasOneofIndex()) {
-        var siblings = oneOfMembers.get(fp.getOneofIndex());
-        field.oneOfSiblings().addAll(siblings);
-        for (Field sibling : siblings) {
-          sibling.oneOfSiblings().add(field);
-        }
-        siblings.add(field);
+        oneOf = oneOfs.get(fp.getOneofIndex());
       }
 
-      fields.add(field);
-    }
-    this.fields = List.copyOf(fields);
+      SimpleField field = new SimpleField(fp, type, cIdx, oneOf);
 
-    List<OneOf> oneOfs = new ArrayList<>();
-    for (int i = 0; i < oneOfMembers.size(); i++) {
-      if (oneOfMembers.get(i).isEmpty()) continue;
-      oneOfs.add(new OneOf(message.getOneofDecl(i).getName(), List.copyOf(oneOfMembers.get(i))));
+      fields.add(field);
+      if (oneOf != null) oneOf.members().add(field);
     }
+
+    // Remove empty oneofs. This removes synthetic oneofs
+    oneOfs.removeIf(o -> o.members().isEmpty());
+
+    // Find combinable oneofs
+//    for (Iterator<OneOf> iterator = oneOfs.iterator(); iterator.hasNext(); ) {
+//      var o = iterator.next();
+//      if (o.members().stream().map(Field::type).allMatch(MessageProtoType.class::isInstance)) {
+//        fields.removeAll(o.members());
+//        iterator.remove();
+//      }
+//    }
+
+    this.fields = List.copyOf(fields);
     this.oneOfs = List.copyOf(oneOfs);
 
     this.presenceByteSize = (compactableCount + 7) / 8;
@@ -67,18 +70,7 @@ public final class MessageGenerator extends Generator {
       append("@_presence = ::Protocr::StaticBitset(%d).new\n".formatted(presenceByteSize));
     }
     for (var field : this.fields) {
-      if (field.cIdx() == -1) {
-        append("@%1$s = %1$s\n".formatted(field.name()));
-      } else {
-        append(String.format("""
-            if %1$s.nil?
-              @%1$s = %2$s
-            else
-              @_presence.set(%3$d, true)
-              @%1$s = %1$s
-            end
-            """, field.name(), field.defaultValue(), field.cIdx()));
-      }
+      field.generateAssignNilable(this.content);
     }
     dedent().append("end\n\n");
   }
@@ -86,11 +78,7 @@ public final class MessageGenerator extends Generator {
   private void generateDeserializeConstructor() {
     append("def initialize(r : ::Protocr::Reader)\n").indent();
     for (var field : this.fields) {
-      if (field.cIdx() == -1) {
-        append("@%s = nil\n".formatted(field.name()));
-      } else {
-        append("@%s = %s\n".formatted(field.name(), field.defaultValue()));
-      }
+      field.generateAssignEmpty(this.content);
     }
     if (this.presenceByteSize != 0) {
       append("@_presence = ::Protocr::StaticBitset(%d).new\n".formatted(presenceByteSize));
@@ -100,20 +88,7 @@ public final class MessageGenerator extends Generator {
     append("case field\n");
     append("when 0 then break\n");
     for (var field : this.fields) {
-      append("when %d\n".formatted(field.number())).indent();
-      if (field.cIdx() == -1) {
-        // TODO: merge messages? apparently valid
-        append("@%s = r.%s\n".formatted(field.name(), field.type().readerMethod()));
-      } else {
-        append(String.format("""
-            @%2$s = r.%3$s.not_nil!
-            @_presence.set(%4$d, true)
-            """, field.number(), field.name(), field.type().readerMethod(), field.cIdx()));
-      }
-      for (Field sibling : field.oneOfSiblings()) {
-        append("clear_%s!\n".formatted(sibling.name()));
-      }
-      dedent();
+      field.generateWhenFieldNumber(this.content);
     }
     append("else r.skip wire_type\n");
     append("end\n").dedent().append("end\n");
@@ -133,12 +108,7 @@ public final class MessageGenerator extends Generator {
     append("def to_protobuf(io : ::IO)\n").indent();
     append("w = ::Protocr::Writer.new io\n");
     for (var field : this.fields) {
-      append(String.format("""
-          if has_%1$s?
-            w.write_tag(%2$d, ::Protocr::WireType::%3$s)
-            w.%4$s(@%1$s.not_nil!)
-          end
-          """, field.name(), field.number(), field.type().wireType(), field.type().writerMethod()));
+      field.generateWriteSerialized(this.content);
     }
     dedent().append("end\n");
 
@@ -155,64 +125,9 @@ public final class MessageGenerator extends Generator {
     append("def ==(other : self)\n").indent();
     append("return true if same?(other)\n");
     for (var field : this.fields) {
-      if (field.cIdx() != -1) {
-        append("return false unless @%1$s == other.@%1$s\n".formatted(field.name()));
-      } else {
-        // TODO: can technically be more efficient: if has_value? is false for both, no need to compare the actual values
-        append("return false unless self.has_%1$s? == other.has_%1$s?\n".formatted(field.name()));
-        append("return false unless self.%1$s == other.%1$s\n".formatted(field.name()));
-      }
+      field.generateCheckEquality(this.content);
     }
     append("return true\n");
-    dedent().append("end\n");
-  }
-
-  private void generateProperty(Field field) {
-    if (field.cIdx() == -1) {
-      // TODO: modifying the value returned by the getter if it was nil will not modify the message, which is likely unintuitive,
-      //       but then, should the mere act of trying to access the field cause it to become the active oneof, if it's part of one?
-      //       I think the spec wants me to do that, but that seems confusing too. Crystal just doesn't have a notion of mutability in that way.
-      //       Of course, I can also consider changing these into structs. I guess that's sort of how the java implementation gets
-      //       away with mutability stuff, by having separate classes for mutable and immutable instances, but that fits into Java
-      //       and doesn't really fit into Crystal.
-      append(String.format("""
-          @%1$s : %2$s?
-          
-          def %1$s : %2$s
-            @%1$s.nil? ? %3$s : @%1$s.not_nil!
-          end
-          def has_%s? : Bool
-            !@%1$s.nil?
-          end
-          def clear_%1$s! : Nil
-            @%1$s = nil
-          end
-          """, field.name(), field.type().crystalType(), field.defaultValue()));
-    } else {
-      append(String.format("""
-          @%1$s : %2$s
-          
-          def %1$s : %2$s
-            @%1$s
-          end
-          def has_%s? : Bool
-            @_presence.test(%3$d)
-          end
-          def clear_%1$s! : Nil
-            @%1$s = %4$s
-            @_presence.set(%3$d, false)
-          end
-          """, field.name(), field.type().crystalType(), field.cIdx(), field.defaultValue()));
-    }
-
-    append("def %1$s=(value : %2$s) : Nil\n".formatted(field.name(), field.type().crystalType())).indent();
-    append("@%1$s = value\n".formatted(field.name()));
-    if (field.cIdx() != -1) {
-      append(String.format("@_presence.set(%1$d, true)\n", field.cIdx()));
-    }
-    for (Field sibling : field.oneOfSiblings()) {
-      append("clear_%s!\n".formatted(sibling.name()));
-    }
     dedent().append("end\n");
   }
 
@@ -241,7 +156,7 @@ public final class MessageGenerator extends Generator {
     generatePresence();
 
     for (var field : this.fields) {
-      generateProperty(field);
+      field.generateProperty(this.content);
     }
 
     for (var oneOf : this.oneOfs) {

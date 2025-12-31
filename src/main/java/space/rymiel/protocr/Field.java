@@ -1,20 +1,21 @@
 package space.rymiel.protocr;
 
-import com.google.protobuf.DescriptorProtos.FieldDescriptorProto;
+public interface Field {
+  String defaultValue();
 
-import java.util.List;
+  String name();
 
-record Field(FieldDescriptorProto protoField, ProtoType type, int cIdx, List<Field> oneOfSiblings) {
-  public String defaultValue() {
-    String source = protoField.hasDefaultValue() ? protoField().getDefaultValue() : null;
-    return type.defaultValueFor(source);
-  }
+  ProtoType type();
 
-  public String name() {
-    return this.protoField.getName();
-  }
+  void generateAssignNilable(IndentedWriter content);
 
-  public int number() {
-    return this.protoField.getNumber();
-  }
+  void generateAssignEmpty(IndentedWriter content);
+
+  void generateWhenFieldNumber(IndentedWriter content);
+
+  void generateWriteSerialized(IndentedWriter content);
+
+  void generateCheckEquality(IndentedWriter content);
+
+  void generateProperty(IndentedWriter content);
 }
