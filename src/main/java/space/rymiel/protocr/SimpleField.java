@@ -7,25 +7,27 @@ import java.util.List;
 import java.util.Objects;
 
 record SimpleField(FieldDescriptorProto protoField, ProtoType type, int cIdx, OneOf oneOf) implements Field {
-  @Override
-  public String defaultValue() {
+  String defaultValue() {
     String source = protoField.hasDefaultValue() ? protoField.getDefaultValue() : null;
     return type.defaultValueFor(source);
   }
 
-  @Override
   public String name() {
     return this.protoField.getName();
   }
 
-  private int number() {
+  public String getCrystalType() {
+    return type.crystalType();
+  }
+
+  int number() {
     return this.protoField.getNumber();
   }
 
-  private Iterable<Field> oneOfSiblings() {
+  private Iterable<SimpleField> oneOfSiblings() {
     if (this.oneOf == null) return List.of();
-    List<Field> list = new ArrayList<>();
-    for (Field x : this.oneOf.members()) {
+    List<SimpleField> list = new ArrayList<>();
+    for (SimpleField x : this.oneOf.members()) {
       if (x != this) list.add(x);
     }
     return list;
@@ -67,7 +69,7 @@ record SimpleField(FieldDescriptorProto protoField, ProtoType type, int cIdx, On
           @_presence.set(%4$d, true)
           """, number(), name(), type().readerMethod(), this.cIdx));
     }
-    for (Field sibling : oneOfSiblings()) {
+    for (SimpleField sibling : oneOfSiblings()) {
       content.append("clear_%s!\n".formatted(sibling.name()));
     }
     content.dedent();
@@ -136,10 +138,15 @@ record SimpleField(FieldDescriptorProto protoField, ProtoType type, int cIdx, On
     if (this.cIdx != -1) {
       content.append(String.format("@_presence.set(%1$d, true)\n", this.cIdx));
     }
-    for (Field sibling : oneOfSiblings()) {
+    for (SimpleField sibling : oneOfSiblings()) {
       content.append("clear_%s!\n".formatted(sibling.name()));
     }
     content.dedent().append("end\n");
+  }
+
+  @Override
+  public void generateParameter(IndentedWriter content) {
+    content.append("%s : %s? = nil, ".formatted(name(), getCrystalType()));
   }
 
   @Override

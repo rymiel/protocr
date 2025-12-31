@@ -3,8 +3,10 @@ package space.rymiel.protocr;
 import com.google.protobuf.DescriptorProtos;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Set;
 
 public final class MessageGenerator extends Generator {
   private final DescriptorProtos.DescriptorProto message;
@@ -45,14 +47,25 @@ public final class MessageGenerator extends Generator {
     // Remove empty oneofs. This removes synthetic oneofs
     oneOfs.removeIf(o -> o.members().isEmpty());
 
-    // Find combinable oneofs
-//    for (Iterator<OneOf> iterator = oneOfs.iterator(); iterator.hasNext(); ) {
-//      var o = iterator.next();
-//      if (o.members().stream().map(Field::type).allMatch(MessageProtoType.class::isInstance)) {
-//        fields.removeAll(o.members());
-//        iterator.remove();
-//      }
-//    }
+    // Find combinable oneofs: all are classes and unique
+    for (Iterator<OneOf> iterator = oneOfs.iterator(); iterator.hasNext(); ) {
+      var o = iterator.next();
+      boolean canCombine = true;
+      Set<String> usedTypes = new HashSet<>();
+      for (SimpleField simpleField : o.members()) {
+        ProtoType type = simpleField.type();
+        if (!(type instanceof MessageProtoType) || usedTypes.contains(type.crystalType())) {
+          canCombine = false;
+          break;
+        }
+        usedTypes.add(type.crystalType());
+      }
+      if (canCombine) {
+        fields.removeAll(o.members());
+        fields.add(new UnionField(o.name(), o.members()));
+        iterator.remove();
+      }
+    }
 
     this.fields = List.copyOf(fields);
     this.oneOfs = List.copyOf(oneOfs);
@@ -63,7 +76,7 @@ public final class MessageGenerator extends Generator {
   private void generateCanonicalConstructor() {
     append("def initialize(");
     for (var field : this.fields) {
-      append("%s : %s? = nil, ".formatted(field.name(), field.type().crystalType()));
+      field.generateParameter(this.content);
     }
     append(")\n").indent();
     if (presenceByteSize != 0) {
@@ -133,12 +146,12 @@ public final class MessageGenerator extends Generator {
 
   private void generateOneOfGetter(OneOf oneOf) {
     append("def %s : ::Union(".formatted(oneOf.name()));
-    for (Field field : oneOf.members()) {
-      append(field.type().crystalType()).append(", ");
+    for (SimpleField field : oneOf.members()) {
+      append(field.getCrystalType()).append(", ");
     }
     append("Nil)\n").indent();
     append("case\n");
-    for (Field field : oneOf.members()) {
+    for (SimpleField field : oneOf.members()) {
       append("when has_%1$s? then %1$s\n".formatted(field.name()));
     }
     append("else nil\nend\n");

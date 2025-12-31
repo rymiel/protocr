@@ -24,3 +24,13 @@ message ContainerBoth {
   MessageX x = 2;
   MessageY y = 3;
 }
+
+// Alternative of Container with repeating message types
+message ContainerExtra {
+  optional uint32 id = 1;
+  oneof content {
+    MessageX x = 2;
+    MessageY y = 3;
+    MessageX x_again = 4;
+  }
+}

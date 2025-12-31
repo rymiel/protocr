@@ -117,6 +117,25 @@ describe Protocr do
     thing.content.should be_nil
   end
 
+  it "decodes oneof not optimized" do
+    thing = ContainerExtra.from_protobuf data("ContainerExtra.1")
+    thing.has_id?.should be_true
+    thing.id.should eq 52u32
+    thing.has_x?.should be_false
+    thing.has_y?.should be_false
+    thing.has_x_again?.should be_true
+    thing.x_again.should eq MessageX.new(value: "meow meow meow")
+  end
+
+  it "decodes oneof incremental" do
+    thing = Container.from_protobuf data("ContainerExtra.1")
+    thing.has_id?.should be_true
+    thing.id.should eq 52u32
+    thing.has_x?.should be_false
+    thing.has_y?.should be_false
+    thing.content.should be_nil
+  end
+
   it "decodes default values" do
     thing = WithDefault.from_protobuf data("Simple.empty")
     thing.has_number?.should be_false

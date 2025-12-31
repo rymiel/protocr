@@ -1,11 +1,7 @@
 package space.rymiel.protocr;
 
 public interface Field {
-  String defaultValue();
-
-  String name();
-
-  ProtoType type();
+  void generateParameter(IndentedWriter content);
 
   void generateAssignNilable(IndentedWriter content);
 
