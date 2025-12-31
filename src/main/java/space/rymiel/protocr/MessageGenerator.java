@@ -30,10 +30,9 @@ public final class MessageGenerator extends Generator {
 
       ProtoType type = ProtoType.of(fp);
       int cIdx = type.compactable() ? compactableCount++ : -1;
-      String defaultValue = fp.hasDefaultValue() ? fp.getDefaultValue() : null;
 
       // I want the array to be immutable but idk how to initialize everything nicely :(
-      Field field = new Field(fp.getName(), fp.getNumber(), defaultValue, type, cIdx, new ArrayList<>());
+      Field field = new Field(fp, type, cIdx, new ArrayList<>());
 
       if (!fp.getProto3Optional() && fp.hasOneofIndex()) {
         var siblings = oneOfMembers.get(fp.getOneofIndex());
@@ -78,7 +77,7 @@ public final class MessageGenerator extends Generator {
               @_presence.set(%3$d, true)
               @%1$s = %1$s
             end
-            """, field.name(), field.defaultValue(), field.cIdx()));
+            """, field.name(), field.defaultName(), field.cIdx()));
       }
     }
     dedent().append("end\n\n");
@@ -90,7 +89,7 @@ public final class MessageGenerator extends Generator {
       if (field.cIdx() == -1) {
         append("@%s = nil\n".formatted(field.name()));
       } else {
-        append("@%s = %s\n".formatted(field.name(), field.defaultValue()));
+        append("@%s = %s\n".formatted(field.name(), field.defaultName()));
       }
     }
     if (this.presenceByteSize != 0) {
@@ -188,7 +187,7 @@ public final class MessageGenerator extends Generator {
           def clear_%1$s! : Nil
             @%1$s = nil
           end
-          """, field.name(), field.type().crystalType(), field.defaultValue()));
+          """, field.name(), field.type().crystalType(), field.defaultName()));
     } else {
       append(String.format("""
           @%1$s : %2$s
@@ -203,7 +202,7 @@ public final class MessageGenerator extends Generator {
             @%1$s = %4$s
             @_presence.set(%3$d, false)
           end
-          """, field.name(), field.type().crystalType(), field.cIdx(), field.defaultValue()));
+          """, field.name(), field.type().crystalType(), field.cIdx(), field.defaultName()));
     }
 
     append("def %1$s=(value : %2$s) : Nil\n".formatted(field.name(), field.type().crystalType())).indent();
@@ -236,9 +235,16 @@ public final class MessageGenerator extends Generator {
       append("@_presence : ::Protocr::StaticBitset(%1$d)\n".formatted(this.presenceByteSize));
   }
 
+  private void generateDefault(Field field) {
+    append("%1$s = %2$s\n".formatted(field.defaultName(), field.generateDefaultValue()));
+  }
+
   public void run() {
     append("class ").append(this.message.getName()).append("\n").indent();
 
+    for (var field : this.fields) {
+      generateDefault(field);
+    }
     generatePresence();
 
     for (var field : this.fields) {
