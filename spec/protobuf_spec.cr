@@ -117,6 +117,17 @@ describe Protocr do
     thing.content.should be_nil
   end
 
+  it "decodes default values" do
+    thing = WithDefault.from_protobuf data("Simple.empty")
+    thing.has_number?.should be_false
+    thing.number.should eq 10u32
+    thing.has_string?.should be_false
+    thing.string.should eq "\"meow\""
+    thing.has_bytes?.should be_false
+    thing.bytes.should eq "5cf4e500f09f988061".hexbytes
+    thing.should eq WithDefault.new()
+  end
+
   it "encodes simple" do
     thing = Simple.new
     thing.text = "Hello, world!"

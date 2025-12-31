@@ -7,13 +7,13 @@ sealed interface ProtoType permits MessageProtoType, SimpleProtoType {
 
   String wireType();
 
-  String defaultEmpty();
-
   String readerMethod();
 
   String writerMethod();
 
   boolean compactable();
+
+  String defaultValueFor(String value);
 
   static ProtoType of(DescriptorProtos.FieldDescriptorProto field) {
     return switch (field.getType()) {

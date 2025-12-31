@@ -22,24 +22,28 @@ public final class MessageGenerator extends Generator {
 
     List<Field> fields = new ArrayList<>();
     int compactableCount = 0;
-    for (var fieldProto : message.getFieldList()) {
+    for (var fp : message.getFieldList()) {
       // need a whole bunch more unsupported operation exceptions lmao
-      if (fieldProto.getLabel() != DescriptorProtos.FieldDescriptorProto.Label.LABEL_OPTIONAL) {
-        throw new UnsupportedOperationException(fieldProto.toString());
+      if (fp.getLabel() != DescriptorProtos.FieldDescriptorProto.Label.LABEL_OPTIONAL) {
+        throw new UnsupportedOperationException(fp.toString());
       }
 
-      ProtoType type = ProtoType.of(fieldProto);
+      ProtoType type = ProtoType.of(fp);
       int cIdx = type.compactable() ? compactableCount++ : -1;
+      String defaultValue = fp.hasDefaultValue() ? fp.getDefaultValue() : null;
+
       // I want the array to be immutable but idk how to initialize everything nicely :(
-      Field field = new Field(fieldProto.getName(), fieldProto.getNumber(), type, cIdx, new ArrayList<>());
-      if (!fieldProto.getProto3Optional() && fieldProto.hasOneofIndex()) {
-        var siblings = oneOfMembers.get(fieldProto.getOneofIndex());
+      Field field = new Field(fp.getName(), fp.getNumber(), defaultValue, type, cIdx, new ArrayList<>());
+
+      if (!fp.getProto3Optional() && fp.hasOneofIndex()) {
+        var siblings = oneOfMembers.get(fp.getOneofIndex());
         field.oneOfSiblings().addAll(siblings);
         for (Field sibling : siblings) {
           sibling.oneOfSiblings().add(field);
         }
         siblings.add(field);
       }
+
       fields.add(field);
     }
     this.fields = List.copyOf(fields);
@@ -74,7 +78,7 @@ public final class MessageGenerator extends Generator {
               @_presence.set(%3$d, true)
               @%1$s = %1$s
             end
-            """, field.name(), field.type().defaultEmpty(), field.cIdx()));
+            """, field.name(), field.defaultValue(), field.cIdx()));
       }
     }
     dedent().append("end\n\n");
@@ -86,7 +90,7 @@ public final class MessageGenerator extends Generator {
       if (field.cIdx() == -1) {
         append("@%s = nil\n".formatted(field.name()));
       } else {
-        append("@%s = %s\n".formatted(field.name(), field.type().defaultEmpty()));
+        append("@%s = %s\n".formatted(field.name(), field.defaultValue()));
       }
     }
     if (this.presenceByteSize != 0) {
@@ -184,7 +188,7 @@ public final class MessageGenerator extends Generator {
           def clear_%1$s! : Nil
             @%1$s = nil
           end
-          """, field.name(), field.type().crystalType(), field.type().defaultEmpty()));
+          """, field.name(), field.type().crystalType(), field.defaultValue()));
     } else {
       append(String.format("""
           @%1$s : %2$s
@@ -199,7 +203,7 @@ public final class MessageGenerator extends Generator {
             @%1$s = %4$s
             @_presence.set(%3$d, false)
           end
-          """, field.name(), field.type().crystalType(), field.cIdx(), field.type().defaultEmpty()));
+          """, field.name(), field.type().crystalType(), field.cIdx(), field.defaultValue()));
     }
 
     append("def %1$s=(value : %2$s) : Nil\n".formatted(field.name(), field.type().crystalType())).indent();

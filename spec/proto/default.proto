@@ -1,0 +1,10 @@
+edition = "2024";
+
+package protocr.spec;
+
+message WithDefault {
+  uint32 number = 100 [default = 10];
+  string string = 101 [default = "\"meow\""];
+  bytes bytes = 102 [default = "\\\xf4\xe5\0\U0001F600a"];
+}
+

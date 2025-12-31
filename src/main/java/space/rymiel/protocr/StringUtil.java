@@ -1,9 +1,5 @@
 package space.rymiel.protocr;
 
-import java.util.Arrays;
-import java.util.Locale;
-import java.util.stream.Collectors;
-
 public class StringUtil {
   private StringUtil() {
   }
@@ -62,9 +58,13 @@ public class StringUtil {
     return result.toString();
   }
 
-  static String crystalFilename(String name) {
+  public static String crystalFilename(String name) {
     name = name.substring(0, name.lastIndexOf('.'));
     name += ".pb.cr";
     return name;
+  }
+
+  public static String stringify(String s) {
+    return '"' + s.replace("\"", "\\\"") + '"';
   }
 }

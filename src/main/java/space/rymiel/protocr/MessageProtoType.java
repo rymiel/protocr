@@ -14,11 +14,6 @@ public record MessageProtoType(DescriptorProtos.FieldDescriptorProto field) impl
   }
 
   @Override
-  public String defaultEmpty() {
-    return crystalType() + ".new()";
-  }
-
-  @Override
   public String readerMethod() {
     return "len_subreader(%s)".formatted(crystalType());
   }
@@ -31,5 +26,11 @@ public record MessageProtoType(DescriptorProtos.FieldDescriptorProto field) impl
   @Override
   public boolean compactable() {
     return false;
+  }
+
+  @Override
+  public String defaultValueFor(String value) {
+    if (value != null) throw new UnsupportedOperationException("Message types cannot be defaulted");
+    return crystalType() + ".new()";
   }
 }
