@@ -32,13 +32,12 @@ public final class MessageGenerator extends Generator {
       }
 
       ProtoType type = ProtoType.of(fp);
-      int cIdx = type.compactable() ? compactableCount++ : -1;
       OneOf oneOf = null;
       if (!fp.getProto3Optional() && fp.hasOneofIndex()) {
         oneOf = oneOfs.get(fp.getOneofIndex());
       }
 
-      SimpleField field = new SimpleField(fp, type, cIdx, oneOf);
+      SimpleField field = type.compactable() ? new PresenceField(fp, type, oneOf, compactableCount++) : new SimpleField(fp, type, oneOf);
 
       fields.add(field);
       if (oneOf != null) oneOf.members().add(field);
