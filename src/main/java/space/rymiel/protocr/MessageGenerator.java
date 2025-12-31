@@ -53,7 +53,7 @@ public final class MessageGenerator extends Generator {
       Set<String> usedTypes = new HashSet<>();
       for (SimpleField simpleField : o.members()) {
         ProtoType type = simpleField.type();
-        if (!(type instanceof MessageProtoType) || usedTypes.contains(type.crystalType())) {
+        if (!type.presence() || usedTypes.contains(type.crystalType())) {
           canCombine = false;
           break;
         }
