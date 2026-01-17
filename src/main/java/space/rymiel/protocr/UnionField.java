@@ -82,6 +82,13 @@ public record UnionField(String name, List<SimpleField> members) implements Fiel
     }
   }
 
+  @Override
+  public void generateInspect(IndentedWriter content) {
+    for (var m : this.members) {
+      m.generateInspect(content);
+    }
+  }
+
   private String getCrystalType() {
     var content = new StringBuilder();
     content.append("::Union(");

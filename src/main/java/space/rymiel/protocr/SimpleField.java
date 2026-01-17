@@ -118,6 +118,18 @@ class SimpleField implements Field {
   }
 
   @Override
+  public void generateInspect(IndentedWriter content) {
+    content.append(String.format("""
+        if has_%1$s?
+          io << "%1$s="
+          %1$s.inspect(io)
+        else
+          io << "!%1$s"
+        end
+        """, name()));
+  }
+
+  @Override
   public boolean equals(Object o) {
     if (!(o instanceof SimpleField that)) return false;
     return Objects.equals(protoField, that.protoField);

@@ -14,4 +14,6 @@ public interface Field {
   void generateCheckEquality(IndentedWriter content);
 
   void generateProperty(IndentedWriter content);
+
+  void generateInspect(IndentedWriter content);
 }

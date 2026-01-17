@@ -135,11 +135,26 @@ public final class MessageGenerator extends Generator {
 
   private void generateEquality() {
     append("def ==(other : self)\n").indent();
-    append("return true if same?(other)\n");
+    append("return false unless other.is_a?(self)\n");
     for (var field : this.fields) {
       field.generateCheckEquality(this.content);
     }
     append("return true\n");
+    dedent().append("end\n");
+  }
+
+  private void generateInspect() {
+    append("def inspect(io : IO) : Nil\n").indent();
+    append("io << {{@type.name.id.stringify}} << '('\n");
+    boolean flag = false;
+    for (var field : this.fields) {
+      if (flag) {
+        append("io << \", \"\n");
+      }
+      field.generateInspect(this.content);
+      flag = true;
+    }
+    append("io << ')'\n");
     dedent().append("end\n");
   }
 
@@ -163,7 +178,7 @@ public final class MessageGenerator extends Generator {
   }
 
   public void run() {
-    append("class ").append(this.message.getName()).append("\n").indent();
+    append("struct ").append(this.message.getName()).append("\n").indent();
 
     generatePresence();
 
@@ -179,6 +194,7 @@ public final class MessageGenerator extends Generator {
     generateDeserializeConstructor();
     generateSerializer();
     generateEquality();
+    generateInspect();
 
     dedent().append("end\n\n");
   }

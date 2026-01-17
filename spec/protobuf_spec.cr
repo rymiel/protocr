@@ -181,7 +181,9 @@ describe Protocr do
     thing.clear_bytes!
     thing.uint64 = 0u64
     thing.clear_uint32!
-    thing.other.clear_foo!
+    other = thing.other
+    other.clear_foo!
+    thing.other = other
     thing.to_protobuf.should eq data("Basic.2")
   end
 
